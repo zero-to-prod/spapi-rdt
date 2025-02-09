@@ -49,8 +49,5 @@
     "psr-4": {
       "Tests\\": "tests/"
     }
-  },
-  "bin": [
-    "bin/spapi-rdt"
-  ]
+  }
 }
