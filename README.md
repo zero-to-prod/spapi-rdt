@@ -17,6 +17,7 @@
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
+    - [Orders Api](#orders)
 - [Local Development](./LOCAL_DEVELOPMENT.md)
 - [Contributing](#contributing)
 
@@ -40,7 +41,20 @@ This will add the package to your project’s dependencies and create an autoloa
 
 ## Usage
 
+### Orders
 
+Access the different endpoints for getting Restricted Data Tokens for the Orders API
+
+```php
+
+use Zerotoprod\SpapiRdt\SpapiRdt;
+
+$response = SpapiRdt::from('access_token', 'targetApplication')
+    ->orders()
+    ->getOrders('123-1234567-1234567');
+
+$restrictedDataToken = $response['response']['restrictedDataToken']
+```
 
 ## Contributing
 
