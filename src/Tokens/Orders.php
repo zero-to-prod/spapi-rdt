@@ -501,7 +501,7 @@ class Orders
      * Creates a Restricted Data Token.
      *
      * @param  string  $order_id      Amazon Order ID
-     * @param  array   $dataElements  `['buyerInfo']`
+     * @param  array   $dataElements
      * @param  array   $options       Merge curl options
      *
      * @return array{
