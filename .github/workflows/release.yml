@@ -16,86 +16,70 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Get Latest Version (Semantic Sorting)
+        id: get_latest_version
+        uses: actions/github-script@v7
         with:
-          fetch-depth: 0
+          script: |
+            const semver = require('semver');
 
-      - name: Get latest version
-        id: get_version
-        run: |
-          LATEST_TAG=$(git tag --sort=-v:refname | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
-          LATEST_TAG=${LATEST_TAG#v} # Remove "v" if it exists
-          echo "latest_version=$LATEST_TAG" >> $GITHUB_ENV
+            const { data: tags } = await github.rest.repos.listTags({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
 
-      - name: Get triggering branch name
-        id: get_branch
+            let versions = tags
+              .map(tag => tag.name.replace(/^v/, '')) // Remove "v" prefix
+              .filter(version => semver.valid(version)) // Keep only valid versions
+              .sort(semver.rcompare); // Sort in descending order
+
+            let latestVersion = versions.length > 0 ? `v${versions[0]}` : "v1.0.0";
+            console.log(`Latest version: ${latestVersion}`);
+            core.setOutput("latest_version", latestVersion);
+
+      - name: Determine Next Version
+        id: bump_version
+        uses: actions/github-script@v7
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          BRANCH_NAME=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }} \
-            --jq '.head_branch')
-          echo "branch_name=$BRANCH_NAME" >> $GITHUB_ENV
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        with:
+          script: |
+            const semver = require('semver');
+            const latestVersion = "${{ steps.get_latest_version.outputs.latest_version }}".replace(/^v/, '');
+            const labels = process.env.PR_LABELS ? process.env.PR_LABELS.split(',') : [];
 
-      - name: Determine next version
-        id: version_bump
-        run: |
-          LATEST_VERSION=${{ env.latest_version }}
-          BRANCH_NAME=${{ env.branch_name }}
+            let newVersion;
 
-          if [ -z "$LATEST_VERSION" ]; then LATEST_VERSION="1.0.0"; fi
-          
-          MAJOR=$(echo $LATEST_VERSION | cut -d. -f1)
-          MINOR=$(echo $LATEST_VERSION | cut -d. -f2)
-          PATCH=$(echo $LATEST_VERSION | cut -d. -f3)
+            if (labels.includes("breaking-change")) {
+              newVersion = semver.inc(latestVersion, 'major');
+            } else if (labels.includes("feature") || labels.includes("enhancement")) {
+              newVersion = semver.inc(latestVersion, 'minor');
+            } else {
+              newVersion = semver.inc(latestVersion, 'patch');
+            }
 
-          if [[ "$BRANCH_NAME" == feat/* ]]; then
-            MINOR=$((MINOR + 1))
-            PATCH=0
-          else
-            PATCH=$((PATCH + 1))
-          fi
+            newVersion = `v${newVersion}`; // Ensure "v" prefix is added back
+            console.log(`New version: ${newVersion}`);
+            core.setOutput("new_version", newVersion);
 
-          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-          echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
+      - name: Build Changelog
+        id: build_changelog
+        uses: mikepenz/release-changelog-builder-action@v4
+        with:
+          configuration: ".github/changelog-config.json"
 
-      - name: Configure Git
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-
-      - name: Create Git tag
-        run: |
-          TAG_NAME="v${{ env.new_version }}"  # Ensure a single "v" is used
-          git tag -a $TAG_NAME -m "Release $TAG_NAME"
-          git push origin $TAG_NAME
-
-      - name: Fetch Merged Pull Requests
-        id: fetch_prs
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          REPO="${{ github.repository }}"
-          LAST_TAG="v${{ env.latest_version }}"
-          NEW_TAG="v${{ env.new_version }}"
-
-          PRS=$(gh api "repos/$REPO/pulls?state=closed&sort=updated&direction=desc" \
-            --jq '.[] | select(.merged_at != null) | select(.merge_commit_sha as $sha | system("git rev-list --count $LAST_TAG..HEAD -- $sha") | tonumber > 0) | "- \(.title) @\(.user.login) in #\(.number)"')
-
-          if [ -z "$PRS" ]; then
-            PRS="No merged pull requests in this release."
-          fi
-
-          echo -e "release_notes<<EOF\n$PRS\nEOF" >> $GITHUB_ENV
-
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.new_version }}
-          name: Release v${{ env.new_version }}
-          body: |
-            ${{ env.release_notes }}
+          tag_name: ${{ steps.bump_version.outputs.new_version }}
+          release_name: Release ${{ steps.bump_version.outputs.new_version }}
+          body: ${{ steps.build_changelog.outputs.changelog }}
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
