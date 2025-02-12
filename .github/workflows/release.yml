@@ -28,17 +28,26 @@ jobs:
           LATEST_TAG=${LATEST_TAG#v} # Remove "v" if it exists
           echo "latest_version=$LATEST_TAG" >> $GITHUB_ENV
 
+      - name: Get triggering branch name
+        id: get_branch
+        run: |
+          BRANCH_NAME=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }} \
+            --jq '.head_branch')
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_ENV
+
       - name: Determine next version
         id: version_bump
         run: |
           LATEST_VERSION=${{ env.latest_version }}
+          BRANCH_NAME=${{ env.branch_name }}
+
           if [ -z "$LATEST_VERSION" ]; then LATEST_VERSION="1.0.0"; fi
           
           MAJOR=$(echo $LATEST_VERSION | cut -d. -f1)
           MINOR=$(echo $LATEST_VERSION | cut -d. -f2)
           PATCH=$(echo $LATEST_VERSION | cut -d. -f3)
 
-          if git log -1 --pretty=%B | grep -qE 'feat/'; then
+          if [[ "$BRANCH_NAME" == feat/* ]]; then
             MINOR=$((MINOR + 1))
             PATCH=0
           else
@@ -79,7 +88,6 @@ jobs:
           tag_name: v${{ env.new_version }}
           name: Release v${{ env.new_version }}
           body: |
-            
             ${{ env.release_notes }}
           draft: false
           prerelease: false
