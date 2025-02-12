@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -37,11 +37,11 @@ jobs:
           
           if git rev-parse $LATEST_TAG >/dev/null 2>&1; then
             TAG_DATE=$(git log -1 --format=%ai $LATEST_TAG)
-            # Get all merged PRs since the last tag date
-            PRS=$(gh pr list --search "merged:>$TAG_DATE" --state merged --json number,title,labels --jq '[.[] | {number: .number, title: .title, labels: [.labels[].name]}]')
+            # Get all merged PRs since the last tag date with author information
+            PRS=$(gh pr list --search "merged:>$TAG_DATE" --state merged --json number,title,labels,author --jq '[.[] | {number: .number, title: .title, labels: [.labels[].name], author: .author.login}]')
           else
-            # If no tag exists, get all merged PRs
-            PRS=$(gh pr list --state merged --json number,title,labels --jq '[.[] | {number: .number, title: .title, labels: [.labels[].name]}]')
+            # If no tag exists, get all merged PRs with author information
+            PRS=$(gh pr list --state merged --json number,title,labels,author --jq '[.[] | {number: .number, title: .title, labels: [.labels[].name], author: .author.login}]')
           fi
           echo "prs=$PRS" >> $GITHUB_OUTPUT
           
@@ -97,7 +97,9 @@ jobs:
           esac
           
           NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          NEW_VERSION_NO_V="${MAJOR}.${MINOR}.${PATCH}"
           echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "new_version_no_v=${NEW_VERSION_NO_V}" >> $GITHUB_OUTPUT
 
       - name: Generate release notes
         id: release_notes
@@ -116,10 +118,11 @@ jobs:
           echo "$PRS" | jq -c '.[]' | while read -r pr; do
             PR_NUM=$(echo "$pr" | jq -r '.number')
             PR_TITLE=$(echo "$pr" | jq -r '.title')
+            PR_AUTHOR=$(echo "$pr" | jq -r '.author')
             LABELS=$(echo "$pr" | jq -r '.labels[]')
           
-            # Create PR line with link
-            PR_LINE="- ${PR_TITLE} (#${PR_NUM})"
+            # Create PR line with new format
+            PR_LINE="- ${PR_TITLE} by @${PR_AUTHOR} in #${PR_NUM}"
           
             # Categorize based on labels
             if echo "$LABELS" | grep -qE "major|breaking-change"; then
@@ -159,7 +162,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.new_version.outputs.new_version }}
-          release_name: Release ${{ steps.new_version.outputs.new_version }}
+          release_name: Release v${{ steps.new_version.outputs.new_version_no_v }}
           body: ${{ steps.release_notes.outputs.release_notes }}
           draft: false
           prerelease: false
