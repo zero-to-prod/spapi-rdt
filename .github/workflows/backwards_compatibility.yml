@@ -1,7 +1,10 @@
 name: backwards_compatibility
 
 on:
-  pull_request:
+  workflow_run:
+    workflows: ["test"]
+    types:
+      - completed
 
 jobs:
   roave-backwards-compatibility-check:
