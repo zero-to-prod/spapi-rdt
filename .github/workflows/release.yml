@@ -17,6 +17,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set safe directory
+        run: git config --global --add safe.directory /github/workspace
+
       - name: Get latest version
         id: get_version
         run: |
