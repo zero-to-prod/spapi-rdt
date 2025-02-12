@@ -1,7 +1,7 @@
 name: backwards_compatibility
 
 on:
-  pull_request:
+  push:
 
 jobs:
   roave-backwards-compatibility-check:
