@@ -53,7 +53,7 @@ jobs:
                 echo "bump_type=major" >> $GITHUB_OUTPUT
                 break
                 ;;
-              "feat")
+              "enhancement")
                 if [[ "$BUMP" != "major" ]]; then
                   echo "bump_type=minor" >> $GITHUB_OUTPUT
                   BUMP="minor"
