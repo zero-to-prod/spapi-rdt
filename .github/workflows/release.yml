@@ -79,6 +79,7 @@ jobs:
           tag_name: v${{ env.new_version }}
           name: Release v${{ env.new_version }}
           body: |
+            
             ${{ env.release_notes }}
           draft: false
           prerelease: false
