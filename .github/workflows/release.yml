@@ -1,4 +1,4 @@
-name: release
+name: Release
 
 on:
   workflow_run:
@@ -14,72 +14,152 @@ jobs:
   release:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Get Latest Version (Semantic Sorting)
-        id: get_latest_version
-        uses: actions/github-script@v7
         with:
-          script: |
-            const semver = require('semver');
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-            const { data: tags } = await github.rest.repos.listTags({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              per_page: 100
-            });
+      - name: Get latest tag
+        id: get_latest_tag
+        run: |
+          git fetch --tags
+          LATEST_TAG=$(git tag --sort=-v:refname | head -n 1 || echo "v0.0.0")
+          echo "latest_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
 
-            let versions = tags
-              .map(tag => tag.name.replace(/^v/, '')) // Remove "v" prefix
-              .filter(version => semver.valid(version)) // Keep only valid versions
-              .sort(semver.rcompare); // Sort in descending order
-
-            let latestVersion = versions.length > 0 ? `v${versions[0]}` : "v1.0.0";
-            console.log(`Latest version: ${latestVersion}`);
-            core.setOutput("latest_version", latestVersion);
-
-      - name: Determine Next Version
-        id: bump_version
-        uses: actions/github-script@v7
+      - name: Get merged PRs since last tag
+        id: get_prs
         env:
-          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
-        with:
-          script: |
-            const semver = require('semver');
-            const latestVersion = "${{ steps.get_latest_version.outputs.latest_version }}".replace(/^v/, '');
-            const labels = process.env.PR_LABELS ? process.env.PR_LABELS.split(',') : [];
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
+          
+          if git rev-parse $LATEST_TAG >/dev/null 2>&1; then
+            TAG_DATE=$(git log -1 --format=%ai $LATEST_TAG)
+            # Get all merged PRs since the last tag date
+            PRS=$(gh pr list --search "merged:>$TAG_DATE" --state merged --json number,title,labels --jq '[.[] | {number: .number, title: .title, labels: [.labels[].name]}]')
+          else
+            # If no tag exists, get all merged PRs
+            PRS=$(gh pr list --state merged --json number,title,labels --jq '[.[] | {number: .number, title: .title, labels: [.labels[].name]}]')
+          fi
+          echo "prs=$PRS" >> $GITHUB_OUTPUT
+          
+          # Determine version bump based on PR labels
+          BUMP="patch"  # default bump type
+          echo "$PRS" | jq -r '.[].labels[]' | while read -r label; do
+            case $label in
+              "major" | "breaking-change")
+                echo "bump_type=major" >> $GITHUB_OUTPUT
+                break
+                ;;
+              "minor" | "feature")
+                if [[ "$BUMP" != "major" ]]; then
+                  echo "bump_type=minor" >> $GITHUB_OUTPUT
+                  BUMP="minor"
+                fi
+                ;;
+            esac
+          done
+          
+          # If no specific bump type was set, use patch
+          if [[ -z "${{ steps.get_prs.outputs.bump_type }}" ]]; then
+            echo "bump_type=patch" >> $GITHUB_OUTPUT
+          fi
 
-            let newVersion;
+      - name: Calculate new version
+        id: new_version
+        run: |
+          CURRENT_VERSION=${{ steps.get_latest_tag.outputs.latest_tag }}
+          BUMP_TYPE=${{ steps.get_prs.outputs.bump_type }}
+          
+          # Remove 'v' prefix for calculation
+          VERSION=${CURRENT_VERSION#v}
+          IFS='.' read -ra VERSION_PARTS <<< "$VERSION"
+          
+          MAJOR=${VERSION_PARTS[0]}
+          MINOR=${VERSION_PARTS[1]}
+          PATCH=${VERSION_PARTS[2]}
+          
+          case $BUMP_TYPE in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
 
-            if (labels.includes("breaking-change")) {
-              newVersion = semver.inc(latestVersion, 'major');
-            } else if (labels.includes("feature") || labels.includes("enhancement")) {
-              newVersion = semver.inc(latestVersion, 'minor');
-            } else {
-              newVersion = semver.inc(latestVersion, 'patch');
-            }
-
-            newVersion = `v${newVersion}`; // Ensure "v" prefix is added back
-            console.log(`New version: ${newVersion}`);
-            core.setOutput("new_version", newVersion);
-
-      - name: Build Changelog
-        id: build_changelog
-        uses: mikepenz/release-changelog-builder-action@v5
-        with:
-          configuration: ".github/changelog-config.json"
+      - name: Generate release notes
+        id: release_notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST_TAG=${{ steps.get_latest_tag.outputs.latest_tag }}
+          PRS='${{ steps.get_prs.outputs.prs }}'
+          
+          # Initialize release notes sections
+          BREAKING_CHANGES=""
+          FEATURES=""
+          FIXES=""
+          
+          # Process each PR and categorize based on labels
+          echo "$PRS" | jq -c '.[]' | while read -r pr; do
+            PR_NUM=$(echo "$pr" | jq -r '.number')
+            PR_TITLE=$(echo "$pr" | jq -r '.title')
+            LABELS=$(echo "$pr" | jq -r '.labels[]')
+          
+            # Create PR line with link
+            PR_LINE="- ${PR_TITLE} (#${PR_NUM})"
+          
+            # Categorize based on labels
+            if echo "$LABELS" | grep -qE "major|breaking-change"; then
+              BREAKING_CHANGES="${BREAKING_CHANGES}${PR_LINE}\n"
+            elif echo "$LABELS" | grep -qE "minor|feature"; then
+              FEATURES="${FEATURES}${PR_LINE}\n"
+            else
+              FIXES="${FIXES}${PR_LINE}\n"
+            fi
+          done
+          
+          # Build release notes content
+          RELEASE_NOTES=""
+          
+          if [ ! -z "$BREAKING_CHANGES" ]; then
+            RELEASE_NOTES="${RELEASE_NOTES}## ⚠️ Breaking Changes\n${BREAKING_CHANGES}\n"
+          fi
+          
+          if [ ! -z "$FEATURES" ]; then
+            RELEASE_NOTES="${RELEASE_NOTES}## 🚀 Features\n${FEATURES}\n"
+          fi
+          
+          if [ ! -z "$FIXES" ]; then
+            RELEASE_NOTES="${RELEASE_NOTES}## 🐛 Bug Fixes\n${FIXES}\n"
+          fi
+          
+          # Escape content for GitHub Actions
+          RELEASE_NOTES="${RELEASE_NOTES//'%'/'%25'}"
+          RELEASE_NOTES="${RELEASE_NOTES//$'\n'/'%0A'}"
+          RELEASE_NOTES="${RELEASE_NOTES//$'\r'/'%0D'}"
+          
+          echo "release_notes=${RELEASE_NOTES}" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.bump_version.outputs.new_version }}
-          release_name: Release ${{ steps.bump_version.outputs.new_version }}
-          body: ${{ steps.build_changelog.outputs.changelog }}
+          tag_name: ${{ steps.new_version.outputs.new_version }}
+          release_name: Release ${{ steps.new_version.outputs.new_version }}
+          body: ${{ steps.release_notes.outputs.release_notes }}
           draft: false
           prerelease: false
