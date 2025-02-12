@@ -27,7 +27,8 @@ jobs:
         id: get-latest-tag
         run: |
           git fetch --tags
-          latest_tag=$(git tag --sort=-v:refname | grep '^v' | head -n 1 || echo "v1.0.0")
+          latest_tag=$(git tag --sort=-v:refname | grep '^v' | head -n 1 || echo "1.0.0")
+
           echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
 
       - name: Calculate new version
@@ -35,13 +36,13 @@ jobs:
         run: |
           latest_tag=${{ env.LATEST_TAG }}
 
-          # Extract version numbers without the 'v' prefix
-          major=$(echo $latest_tag | sed 's/v\([0-9]*\)\..*/\1/')
-          minor=$(echo $latest_tag | sed 's/v[0-9]*\.\([0-9]*\)\..*/\1/')
-          patch=$(echo $latest_tag | sed 's/v[0-9]*\.[0-9]*\.\([0-9]*\).*/\1/')
+          base_version="${latest_tag#v}"
+          major=$(echo "$base_version" | cut -d '.' -f1)
+          minor=$(echo "$base_version" | cut -d '.' -f2)
+          patch=$(echo "$base_version" | cut -d '.' -f3)
 
           enhancement_count=$(gh pr list --base main --state merged --json labels --search "merged:>=$(git log -1 --format=%aI $latest_tag)" | jq '[.[] | select(.labels[].name == "enhancement")] | length')
-          
+
           if [ "$enhancement_count" -gt 0 ]; then
             # Increment minor version, reset patch
             minor=$((minor + 1))
@@ -51,7 +52,6 @@ jobs:
             patch=$((patch + 1))
           fi
 
-          # Format new version with only one 'v' before the numbers
           new_version="v$major.$minor.$patch"
           echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
         env:
@@ -60,12 +60,10 @@ jobs:
       - name: Generate release notes
         id: release-notes
         run: |
-          # Get all PRs merged since last release
           release_notes=$(gh pr list --base main --state merged --json title,number,url --search "merged:>=$(git log -1 --format=%aI ${{ env.LATEST_TAG }})" | \
             jq -r '.[] | "* [#\(.number)](\(.url)) - \(.title)"' | \
             sort)
-          
-          # Save release notes to a file
+
           echo "# Changes in this release" > release_notes.md
           echo "$release_notes" >> release_notes.md
         env:
