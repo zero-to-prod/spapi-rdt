@@ -80,7 +80,11 @@ jobs:
           NEW_TAG="v${{ env.new_version }}"
 
           PRS=$(gh api "repos/$REPO/pulls?state=closed&sort=updated&direction=desc" \
-            --jq '.[] | select(.merged_at != null) | select(.merge_commit_sha | inside(@sh "git rev-list $LAST_TAG..HEAD")) | "- \(.title) by @\(.user.login) in #\(.number)"')
+            --jq '.[] | select(.merged_at != null) | select(.merge_commit_sha as $sha | system("git rev-list --count $LAST_TAG..HEAD -- $sha") | tonumber > 0) | "- \(.title) @\(.user.login) in #\(.number)"')
+
+          if [ -z "$PRS" ]; then
+            PRS="No merged pull requests in this release."
+          fi
 
           echo -e "release_notes<<EOF\n$PRS\nEOF" >> $GITHUB_ENV
 
