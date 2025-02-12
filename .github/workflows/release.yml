@@ -77,7 +77,6 @@ jobs:
             --search "merged:>=$(git log -1 --format=%aI ${{ env.LATEST_TAG }})" | \
             jq -r '.[] | "- \(.title) by @\(.author.login) in #\(.number)"' | sort)
 
-          echo "# Changes in this release" > release_notes.md
           echo "$release_notes" >> release_notes.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
