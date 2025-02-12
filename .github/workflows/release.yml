@@ -30,6 +30,8 @@ jobs:
 
       - name: Get triggering branch name
         id: get_branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BRANCH_NAME=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }} \
             --jq '.head_branch')
