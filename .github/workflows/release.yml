@@ -1,8 +1,8 @@
-name: Release
+name: release
 
 on:
   workflow_run:
-    workflows: ["backwards_compatibility"]
+    workflows: [ "backwards_compatibility" ]
     types:
       - completed
 
@@ -34,13 +34,12 @@ jobs:
         id: version
         run: |
           latest_tag=${{ env.LATEST_TAG }}
-          
-          # Extract version numbers while preserving the 'v' prefix
+
+          # Extract version numbers without the 'v' prefix
           major=$(echo $latest_tag | sed 's/v\([0-9]*\)\..*/\1/')
           minor=$(echo $latest_tag | sed 's/v[0-9]*\.\([0-9]*\)\..*/\1/')
           patch=$(echo $latest_tag | sed 's/v[0-9]*\.[0-9]*\.\([0-9]*\).*/\1/')
-          
-          # Check for enhancement label in merged PRs since last tag
+
           enhancement_count=$(gh pr list --base main --state merged --json labels --search "merged:>=$(git log -1 --format=%aI $latest_tag)" | jq '[.[] | select(.labels[].name == "enhancement")] | length')
           
           if [ "$enhancement_count" -gt 0 ]; then
@@ -51,7 +50,8 @@ jobs:
             # Increment patch version
             patch=$((patch + 1))
           fi
-          
+
+          # Format new version with only one 'v' before the numbers
           new_version="v$major.$minor.$patch"
           echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
         env:
