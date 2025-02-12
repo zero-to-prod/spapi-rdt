@@ -27,7 +27,13 @@ jobs:
         id: get-latest-tag
         run: |
           git fetch --tags
-          latest_tag=$(git tag --sort=-v:refname | grep '^v' | head -n 1 || echo "1.0.0")
+
+          latest_tag=$(git tag --sort=-v:refname | grep '^v' | head -n 1)
+
+          if [ -z "$latest_tag" ]; then
+            echo "No existing version tag found. Defaulting to v0.0.0"
+            latest_tag="v0.0.0"
+          fi
 
           echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
 
@@ -41,14 +47,18 @@ jobs:
           minor=$(echo "$base_version" | cut -d '.' -f2)
           patch=$(echo "$base_version" | cut -d '.' -f3)
 
-          enhancement_count=$(gh pr list --base main --state merged --json labels --search "merged:>=$(git log -1 --format=%aI $latest_tag)" | jq '[.[] | select(.labels[].name == "enhancement")] | length')
+          enhancement_count=$(gh pr list \
+            --base main \
+            --state merged \
+            --json labels \
+            --search "merged:>=$(git log -1 --format=%aI $latest_tag)" | \
+            jq '[.[] | select(.labels[].name == "enhancement")] | length'
+          )
 
           if [ "$enhancement_count" -gt 0 ]; then
-            # Increment minor version, reset patch
             minor=$((minor + 1))
             patch=0
           else
-            # Increment patch version
             patch=$((patch + 1))
           fi
 
