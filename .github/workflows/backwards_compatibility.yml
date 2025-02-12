@@ -3,6 +3,7 @@ name: backwards_compatibility
 on:
   workflow_run:
     workflows: ["test"]
+    branches: ['*']
     types:
       - completed
 
