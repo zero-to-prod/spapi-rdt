@@ -5,6 +5,7 @@ on:
     workflows: [ "test" ]
     types:
       - completed
+    pr:
 
 jobs:
   roave-backwards-compatibility-check:
