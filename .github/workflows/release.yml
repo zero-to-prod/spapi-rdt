@@ -49,11 +49,11 @@ jobs:
           BUMP="patch"  # default bump type
           echo "$PRS" | jq -r '.[].labels[]' | while read -r label; do
             case $label in
-              "major" | "breaking-change")
+              "major")
                 echo "bump_type=major" >> $GITHUB_OUTPUT
                 break
                 ;;
-              "minor" | "feature")
+              "feat")
                 if [[ "$BUMP" != "major" ]]; then
                   echo "bump_type=minor" >> $GITHUB_OUTPUT
                   BUMP="minor"
