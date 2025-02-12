@@ -14,155 +14,70 @@ jobs:
   release:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get latest tag
-        id: get_latest_tag
+        id: get-latest-tag
         run: |
           git fetch --tags
-          LATEST_TAG=$(git tag --sort=-v:refname | head -n 1 || echo "v0.0.0")
-          echo "latest_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
-
-      - name: Get merged PRs since last tag
-        id: get_prs
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
-          
-          if git rev-parse $LATEST_TAG >/dev/null 2>&1; then
-            TAG_DATE=$(git log -1 --format=%ai $LATEST_TAG)
-            # Get all merged PRs since the last tag date with author information
-            PRS=$(gh pr list --search "merged:>$TAG_DATE" --state merged --json number,title,labels,author --jq '[.[] | {number: .number, title: .title, labels: [.labels[].name], author: .author.login}]')
-          else
-            # If no tag exists, get all merged PRs with author information
-            PRS=$(gh pr list --state merged --json number,title,labels,author --jq '[.[] | {number: .number, title: .title, labels: [.labels[].name], author: .author.login}]')
-          fi
-          echo "prs=$PRS" >> $GITHUB_OUTPUT
-          
-          # Determine version bump based on PR labels
-          BUMP="patch"  # default bump type
-          echo "$PRS" | jq -r '.[].labels[]' | while read -r label; do
-            case $label in
-              "major")
-                echo "bump_type=major" >> $GITHUB_OUTPUT
-                break
-                ;;
-              "enhancement")
-                if [[ "$BUMP" != "major" ]]; then
-                  echo "bump_type=minor" >> $GITHUB_OUTPUT
-                  BUMP="minor"
-                fi
-                ;;
-            esac
-          done
-          
-          # If no specific bump type was set, use patch
-          if [[ -z "${{ steps.get_prs.outputs.bump_type }}" ]]; then
-            echo "bump_type=patch" >> $GITHUB_OUTPUT
-          fi
+          latest_tag=$(git tag --sort=-v:refname | grep '^v' | head -n 1 || echo "v1.0.0")
+          echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
 
       - name: Calculate new version
-        id: new_version
+        id: version
         run: |
-          CURRENT_VERSION=${{ steps.get_latest_tag.outputs.latest_tag }}
-          BUMP_TYPE=${{ steps.get_prs.outputs.bump_type }}
+          latest_tag=${{ env.LATEST_TAG }}
           
-          # Remove 'v' prefix for calculation
-          VERSION=${CURRENT_VERSION#v}
-          IFS='.' read -ra VERSION_PARTS <<< "$VERSION"
+          # Extract version numbers while preserving the 'v' prefix
+          major=$(echo $latest_tag | sed 's/v\([0-9]*\)\..*/\1/')
+          minor=$(echo $latest_tag | sed 's/v[0-9]*\.\([0-9]*\)\..*/\1/')
+          patch=$(echo $latest_tag | sed 's/v[0-9]*\.[0-9]*\.\([0-9]*\).*/\1/')
           
-          MAJOR=${VERSION_PARTS[0]}
-          MINOR=${VERSION_PARTS[1]}
-          PATCH=${VERSION_PARTS[2]}
+          # Check for enhancement label in merged PRs since last tag
+          enhancement_count=$(gh pr list --base main --state merged --json labels --search "merged:>=$(git log -1 --format=%aI $latest_tag)" | jq '[.[] | select(.labels[].name == "enhancement")] | length')
           
-          case $BUMP_TYPE in
-            major)
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-              ;;
-            minor)
-              MINOR=$((MINOR + 1))
-              PATCH=0
-              ;;
-            patch)
-              PATCH=$((PATCH + 1))
-              ;;
-          esac
+          if [ "$enhancement_count" -gt 0 ]; then
+            # Increment minor version, reset patch
+            minor=$((minor + 1))
+            patch=0
+          else
+            # Increment patch version
+            patch=$((patch + 1))
+          fi
           
-          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-          NEW_VERSION_NO_V="${MAJOR}.${MINOR}.${PATCH}"
-          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
-          echo "new_version_no_v=${NEW_VERSION_NO_V}" >> $GITHUB_OUTPUT
-
-      - name: Generate release notes
-        id: release_notes
+          new_version="v$major.$minor.$patch"
+          echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          LATEST_TAG=${{ steps.get_latest_tag.outputs.latest_tag }}
-          PRS='${{ steps.get_prs.outputs.prs }}'
-          
-          # Initialize release notes sections
-          BREAKING_CHANGES=""
-          FEATURES=""
-          FIXES=""
-          
-          # Process each PR and categorize based on labels
-          echo "$PRS" | jq -c '.[]' | while read -r pr; do
-            PR_NUM=$(echo "$pr" | jq -r '.number')
-            PR_TITLE=$(echo "$pr" | jq -r '.title')
-            PR_AUTHOR=$(echo "$pr" | jq -r '.author')
-            LABELS=$(echo "$pr" | jq -r '.labels[]')
-          
-            # Create PR line with new format
-            PR_LINE="- ${PR_TITLE} by @${PR_AUTHOR} in #${PR_NUM}"
-          
-            # Categorize based on labels
-            if echo "$LABELS" | grep -qE "major|breaking-change"; then
-              BREAKING_CHANGES="${BREAKING_CHANGES}${PR_LINE}\n"
-            elif echo "$LABELS" | grep -qE "minor|feature"; then
-              FEATURES="${FEATURES}${PR_LINE}\n"
-            else
-              FIXES="${FIXES}${PR_LINE}\n"
-            fi
-          done
-          
-          # Build release notes content
-          RELEASE_NOTES=""
-          
-          if [ ! -z "$BREAKING_CHANGES" ]; then
-            RELEASE_NOTES="${RELEASE_NOTES}## ⚠️ Breaking Changes\n${BREAKING_CHANGES}\n"
-          fi
-          
-          if [ ! -z "$FEATURES" ]; then
-            RELEASE_NOTES="${RELEASE_NOTES}## 🚀 Features\n${FEATURES}\n"
-          fi
-          
-          if [ ! -z "$FIXES" ]; then
-            RELEASE_NOTES="${RELEASE_NOTES}## 🐛 Bug Fixes\n${FIXES}\n"
-          fi
-          
-          # Escape content for GitHub Actions
-          RELEASE_NOTES="${RELEASE_NOTES//'%'/'%25'}"
-          RELEASE_NOTES="${RELEASE_NOTES//$'\n'/'%0A'}"
-          RELEASE_NOTES="${RELEASE_NOTES//$'\r'/'%0D'}"
-          
-          echo "release_notes=${RELEASE_NOTES}" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          # Get all PRs merged since last release
+          release_notes=$(gh pr list --base main --state merged --json title,number,url --search "merged:>=$(git log -1 --format=%aI ${{ env.LATEST_TAG }})" | \
+            jq -r '.[] | "* [#\(.number)](\(.url)) - \(.title)"' | \
+            sort)
+          
+          # Save release notes to a file
+          echo "# Changes in this release" > release_notes.md
+          echo "$release_notes" >> release_notes.md
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.new_version.outputs.new_version }}
-          release_name: Release v${{ steps.new_version.outputs.new_version_no_v }}
-          body: ${{ steps.release_notes.outputs.release_notes }}
+          tag_name: ${{ env.NEW_VERSION }}
+          name: Release ${{ env.NEW_VERSION }}
+          body_path: release_notes.md
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
