@@ -1,9 +1,6 @@
 name: backwards_compatibility
 
-on:
-  workflow_run:
-    workflows: [ test ]
-    types: [ completed ]
+on: push
 
 jobs:
   roave-backwards-compatibility-check:
