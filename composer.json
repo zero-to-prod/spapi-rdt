@@ -33,9 +33,7 @@
   ],
   "require": {
     "php": ">=7.1",
-    "zero-to-prod/dock": "^1.0",
     "zero-to-prod/spapi-tokens": "^1.0",
-    "psr/container": "*",
     "zero-to-prod/container": "^0.1.0"
   },
   "require-dev": {
