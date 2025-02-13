@@ -2,6 +2,7 @@
 
 namespace Zerotoprod\SpapiRdt\Tokens;
 
+use Zerotoprod\SpapiRdt\Contracts\OrdersInterface;
 use Zerotoprod\SpapiTokens\SpapiTokens;
 
 /**
@@ -17,7 +18,7 @@ use Zerotoprod\SpapiTokens\SpapiTokens;
  *
  * @link https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
  */
-class Orders
+class Orders implements OrdersInterface
 {
     /**
      * @var string|null
@@ -152,6 +153,7 @@ class Orders
      *      expiresIn: int,
      *      restrictedDataToken: string
      *  }
+     * }
      *
      * @link https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
      */
@@ -234,7 +236,7 @@ class Orders
      *      expiresIn: int,
      *      restrictedDataToken: string
      *  }
-     *
+     * }
      * @link https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
      */
     public function getOrder(
@@ -318,7 +320,7 @@ class Orders
      *      expiresIn: int,
      *      restrictedDataToken: string
      *  }
-     *
+     * }
      * @link https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
      */
     public function getOrderBuyerInfo(string $order_id, array $options = []): array
@@ -399,7 +401,7 @@ class Orders
      *      expiresIn: int,
      *      restrictedDataToken: string
      *  }
-     *
+     * }
      * @link https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
      */
     public function getOrderAddress(string $order_id, array $options = []): array
@@ -481,7 +483,7 @@ class Orders
      *      expiresIn: int,
      *      restrictedDataToken: string
      *  }
-     *
+     * }
      * @link https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
      */
     public function getOrderItems(string $order_id, array $dataElements = [], array $options = []): array
@@ -500,9 +502,9 @@ class Orders
     /**
      * Creates a Restricted Data Token.
      *
-     * @param  string  $order_id      Amazon Order ID
+     * @param  string  $order_id  Amazon Order ID
      * @param  array   $dataElements
-     * @param  array   $options       Merge curl options
+     * @param  array   $options   Merge curl options
      *
      * @return array{
      *  info: array{
@@ -563,7 +565,7 @@ class Orders
      *      expiresIn: int,
      *      restrictedDataToken: string
      *  }
-     *
+     * }
      * @link https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
      */
     public function getOrderItemsBuyerInfo(string $order_id, array $dataElements = [], array $options = []): array

@@ -19,6 +19,7 @@
 - [Installation](#installation)
 - [Usage](#usage)
     - [Orders Api](#orders)
+- [Testing](#testing)
 - [Local Development](./LOCAL_DEVELOPMENT.md)
 - [Contributing](#contributing)
 
@@ -55,6 +56,20 @@ $response = SpapiRdt::from('access_token', 'targetApplication')
     ->getOrders('123-1234567-1234567');
 
 $restrictedDataToken = $response['response']['restrictedDataToken']
+```
+
+## Testing
+You can test the api by faking the response:
+
+```php
+use Zerotoprod\SpapiRdt\SpapiRdt;
+use Zerotoprod\SpapiRdt\Support\Testing\SpapiResponseFactory;
+
+SpapiRdt::fake(SpapiResponseFactory::ok());
+
+$response = SpapiRdt::from('access_token', 'targetApplication')
+    ->orders()
+    ->getOrders();
 ```
 
 ## Contributing
