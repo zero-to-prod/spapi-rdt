@@ -2,10 +2,8 @@ name: backwards_compatibility
 
 on:
   workflow_run:
-    workflows: [ "test" ]
-    types:
-      - completed
-  pull_request:
+    workflows: [ test ]
+    types: [ completed ]
 
 jobs:
   roave-backwards-compatibility-check:
