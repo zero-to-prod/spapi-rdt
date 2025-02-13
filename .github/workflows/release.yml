@@ -4,8 +4,7 @@ on:
   workflow_run:
     workflows: [ backwards_compatibility ]
     types: [ completed ]
-    branches:
-      - 'main'
+    branches: [ main ]
 
 permissions:
   contents: write
@@ -15,7 +14,8 @@ jobs:
   release:
     if: |
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main'
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
