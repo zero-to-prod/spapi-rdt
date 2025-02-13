@@ -4,7 +4,8 @@ on:
   workflow_run:
     workflows: [ "backwards_compatibility" ]
     types: [ completed ]
-    branches: [ "main" ]
+    branches:
+      - 'main'
 
 permissions:
   contents: write
