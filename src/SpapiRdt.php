@@ -75,8 +75,9 @@ class SpapiRdt implements SpapiRdtInterface
         ?string $user_agent = null,
         array $options = []
     ): SpapiRdtInterface {
-        return Container::getInstance()
-            ->get(SpapiRdtFake::class) ?: new self($access_token, $targetApplication, $base_uri, $user_agent, $options);
+        return Container::getInstance()->has(SpapiRdtFake::class)
+            ? Container::getInstance()->get(SpapiRdtFake::class)
+            : new self($access_token, $targetApplication, $base_uri, $user_agent, $options);
     }
 
     /**

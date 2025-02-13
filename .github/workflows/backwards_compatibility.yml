@@ -2,13 +2,18 @@ name: backwards_compatibility
 
 on:
   workflow_run:
-    workflows: [ "test" ]
-    types:
-      - completed
+    workflows: [ test ]
+    types: [ completed ]
+    branches:
+      - 'main'
   pull_request:
+    branches: [ main ]
 
 jobs:
-  roave-backwards-compatibility-check:
+  bc-check:
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'pull_request'
     name: Roave Backwards Compatibility Check
     runs-on: ubuntu-latest
     continue-on-error: ${{ github.event.pull_request.base.ref != 'main' }}
