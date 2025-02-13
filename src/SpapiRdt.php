@@ -2,9 +2,13 @@
 
 namespace Zerotoprod\SpapiRdt;
 
+use Zerotoprod\Container\Container;
+use Zerotoprod\SpapiRdt\Contracts\OrdersInterface;
+use Zerotoprod\SpapiRdt\Contracts\SpapiRdtInterface;
+use Zerotoprod\SpapiRdt\Support\Testing\SpapiRdtFake;
 use Zerotoprod\SpapiRdt\Tokens\Orders;
 
-class SpapiRdt
+class SpapiRdt implements SpapiRdtInterface
 {
     /**
      * @var string|null
@@ -39,7 +43,7 @@ class SpapiRdt
      *
      * @link https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
      */
-    public function __construct(
+    private function __construct(
         string $access_token,
         ?string $targetApplication = null,
         string $base_uri = 'https://sellingpartnerapi-na.amazon.com/tokens/2021-03-01/restrictedDataToken',
@@ -70,14 +74,15 @@ class SpapiRdt
         string $base_uri = 'https://sellingpartnerapi-na.amazon.com/tokens/2021-03-01/restrictedDataToken',
         ?string $user_agent = null,
         array $options = []
-    ): self {
-        return new self($access_token, $targetApplication, $base_uri, $user_agent, $options);
+    ): SpapiRdtInterface {
+        return Container::getInstance()
+            ->get(SpapiRdtFake::class) ?: new self($access_token, $targetApplication, $base_uri, $user_agent, $options);
     }
 
     /**
      * Returns Restricted Data Tokens for the Orders API.
      */
-    public function orders(): Orders
+    public function orders(): OrdersInterface
     {
         return new Orders(
             $this->access_token,
@@ -86,5 +91,16 @@ class SpapiRdt
             $this->user_agent,
             $this->options
         );
+    }
+
+    public static function fake(array $response = [], ?SpapiRdtInterface $fake = null): SpapiRdtInterface
+    {
+        Container::getInstance()
+            ->instance(
+                SpapiRdtFake::class,
+                $instance = $fake ?? new SpapiRdtFake($response)
+            );
+
+        return $instance;
     }
 }
