@@ -5,6 +5,8 @@ on:
     workflows: [ "backwards_compatibility" ]
     types:
       - completed
+  push:
+    branches: [ main ]
 
 permissions:
   contents: write
