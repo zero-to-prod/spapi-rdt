@@ -1,19 +1,15 @@
 name: backwards_compatibility
 
 on:
-  workflow_run:
-    workflows: [ test ]
-    types: [ completed ]
-  pull_request:
+  push:
 
 jobs:
   bc-check:
-    if: |
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
-      github.event_name == 'pull_request'
     name: Roave Backwards Compatibility Check
     runs-on: ubuntu-latest
-    continue-on-error: ${{ github.event.pull_request.base.ref != 'main' }}
+    outputs:
+      passed: ${{ steps.check-bc.outcome == 'success' }}
+      major_version_bump: ${{ steps.check-major-version-bump.outputs.bumped }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,10 +17,32 @@ jobs:
       - name: Set safe directory
         run: git config --global --add safe.directory /github/workspace
       - name: "Check for BC breaks"
+        id: check-bc
         run: |
           git config --global --add safe.directory "${GITHUB_WORKSPACE}"
-
           docker run --rm \
             -v "${GITHUB_WORKSPACE}":/github/workspace \
             -w /github/workspace \
             nyholm/roave-bc-check-ga
+      - name: Check if major version was bumped
+        id: check-major-version-bump
+        run: |
+          # Here you would need to implement logic to check if the tag bumped the major version
+          # For example, by comparing the current tag with the previous one
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo '')
+          CURRENT_TAG=$(git describe --tags --abbrev=0)
+          if [[ "$CURRENT_TAG" == v* ]]; then
+            CURRENT_MAJOR=$(echo $CURRENT_TAG | cut -d. -f1 | sed 's/^v//')
+            if [[ "$PREV_TAG" == v* ]]; then
+              PREV_MAJOR=$(echo $PREV_TAG | cut -d. -f1 | sed 's/^v//')
+              if [[ $CURRENT_MAJOR -gt $PREV_MAJOR ]]; then
+                echo "bumped=true" >> $GITHUB_OUTPUT
+              else
+                echo "bumped=false" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "bumped=false" >> $GITHUB_OUTPUT  # If there's no previous tag, assume no major bump
+            fi
+          else
+            echo "bumped=false" >> $GITHUB_OUTPUT
+          fi
