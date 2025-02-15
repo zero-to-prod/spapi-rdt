@@ -22,7 +22,7 @@ class SpapiRdtFake implements SpapiRdtInterface
     {
         Container::getInstance()
             ->instance(
-                SpapiRdtFake::class,
+                __CLASS__,
                 $instance = $fake ?? new SpapiRdtFake($response)
             );
 
