@@ -8,6 +8,12 @@ use Zerotoprod\SpapiRdt\Contracts\SpapiRdtInterface;
 use Zerotoprod\SpapiRdt\Support\Testing\SpapiRdtFake;
 use Zerotoprod\SpapiRdt\Tokens\Orders;
 
+/**
+ * Call the Tokens API to get a Restricted Data Token (RDT) for restricted resources.
+ *
+ * @link https://github.com/zero-to-prod/spapi-rdt
+ * @see  https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
+ */
 class SpapiRdt implements SpapiRdtInterface
 {
     /**
@@ -41,7 +47,8 @@ class SpapiRdt implements SpapiRdtInterface
      * @param  string|null  $user_agent         The user-agent for the request
      * @param  array        $options            Merge curl options
      *
-     * @link https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
+     * @link https://github.com/zero-to-prod/spapi-rdt
+     * @see  https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
      */
     private function __construct(
         string $access_token,
@@ -66,7 +73,8 @@ class SpapiRdt implements SpapiRdtInterface
      * @param  string|null  $user_agent         The user-agent for the request
      * @param  array        $options            Merge curl options
      *
-     * @link https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
+     * @link https://github.com/zero-to-prod/spapi-rdt
+     * @see  https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
      */
     public static function from(
         string $access_token,
@@ -82,6 +90,8 @@ class SpapiRdt implements SpapiRdtInterface
 
     /**
      * Returns Restricted Data Tokens for the Orders API.
+     *
+     * @link https://github.com/zero-to-prod/spapi-rdt
      */
     public function orders(): OrdersInterface
     {
@@ -92,16 +102,5 @@ class SpapiRdt implements SpapiRdtInterface
             $this->user_agent,
             $this->options
         );
-    }
-
-    public static function fake(array $response = [], ?SpapiRdtInterface $fake = null): SpapiRdtInterface
-    {
-        Container::getInstance()
-            ->instance(
-                SpapiRdtFake::class,
-                $instance = $fake ?? new SpapiRdtFake($response)
-            );
-
-        return $instance;
     }
 }
