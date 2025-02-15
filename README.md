@@ -63,9 +63,12 @@ You can test the api by faking the response:
 
 ```php
 use Zerotoprod\SpapiRdt\SpapiRdt;
+use Zerotoprod\SpapiRdt\Support\Testing\SpapiRdtFake;
 use Zerotoprod\SpapiRdt\Support\Testing\SpapiResponseFactory;
 
-SpapiRdt::fake(SpapiResponseFactory::ok());
+SpapiRdtFake::fake(
+    SpapiResponseFactory::factory()->make()
+);
 
 $response = SpapiRdt::from('access_token', 'targetApplication')
     ->orders()
