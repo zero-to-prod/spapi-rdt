@@ -33,7 +33,7 @@
   ],
   "require": {
     "php": ">=7.1",
-    "zero-to-prod/spapi-tokens": "^1.0",
+    "zero-to-prod/spapi-tokens": "^1.0 || ^2.0",
     "zero-to-prod/container": "^0.1.0",
     "zero-to-prod/factory": "^0.1.1"
   },
