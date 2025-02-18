@@ -2,6 +2,9 @@
 
 namespace Zerotoprod\SpapiRdt\Contracts;
 
+/**
+ * @link https://github.com/zero-to-prod/spapi-rdt
+ */
 interface OrdersInterface
 {
     /**

@@ -13,6 +13,7 @@ use Zerotoprod\SpapiRdt\Tokens\Orders;
  *
  * @link https://github.com/zero-to-prod/spapi-rdt
  * @see  https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
+ * Create Restricted Data Tokens for Amazons Selling Partner API (SPAPI).
  */
 class SpapiRdt implements SpapiRdtInterface
 {
