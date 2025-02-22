@@ -5,7 +5,7 @@ namespace Tests\Unit;
 use Tests\TestCase;
 use Zerotoprod\SpapiRdt\SpapiRdt;
 use Zerotoprod\SpapiRdt\Support\Testing\SpapiRdtFake;
-use Zerotoprod\SpapiRdt\Support\Testing\SpapiResponseFactory;
+use Zerotoprod\SpapiRdt\Support\Testing\SpapiRdtResponseFactory;
 
 class FakeResponseTest extends TestCase
 {
@@ -13,7 +13,7 @@ class FakeResponseTest extends TestCase
     public function fakes_response(): void
     {
         SpapiRdtFake::fake(
-            SpapiResponseFactory::factory(['response' => ['restrictedDataToken' => 'rdt']])
+            SpapiRdtResponseFactory::factory(['response' => ['restrictedDataToken' => 'rdt']])
                 ->make()
         );
 
@@ -28,7 +28,7 @@ class FakeResponseTest extends TestCase
     public function asError(): void
     {
         SpapiRdtFake::fake(
-            SpapiResponseFactory::factory(['response' => ['restrictedDataToken' => 'rdt']])
+            SpapiRdtResponseFactory::factory(['response' => ['restrictedDataToken' => 'rdt']])
                 ->asError()
                 ->make()
         );
