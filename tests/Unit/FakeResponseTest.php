@@ -6,6 +6,7 @@ use Tests\TestCase;
 use Zerotoprod\SpapiRdt\SpapiRdt;
 use Zerotoprod\SpapiRdt\Support\Testing\SpapiRdtFake;
 use Zerotoprod\SpapiRdt\Support\Testing\SpapiRdtResponseFactory;
+use Zerotoprod\SpapiTokens\SpapiTokens;
 
 class FakeResponseTest extends TestCase
 {
@@ -17,7 +18,7 @@ class FakeResponseTest extends TestCase
                 ->make()
         );
 
-        $response = SpapiRdt::from('access_token', 'targetApplication')
+        $response = SpapiRdt::from(new SpapiTokens('access_token', 'targetApplication'))
             ->orders()
             ->getOrders();
 
@@ -33,7 +34,7 @@ class FakeResponseTest extends TestCase
                 ->make()
         );
 
-        $response = SpapiRdt::from('access_token', 'targetApplication')
+        $response = SpapiRdt::from(new SpapiTokens('access_token', 'targetApplication'))
             ->orders()
             ->getOrders();
 
