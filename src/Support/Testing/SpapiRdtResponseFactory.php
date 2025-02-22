@@ -9,7 +9,7 @@ use Zerotoprod\Factory\Factory;
  *
  * @link https://github.com/zero-to-prod/spapi-rdt
  */
-class SpapiResponseFactory
+class SpapiRdtResponseFactory
 {
     use Factory;
 
