@@ -11,11 +11,12 @@ use Zerotoprod\SpapiTokens\Contracts\SpapiTokensInterface;
 use Zerotoprod\SpapiTokens\SpapiTokens;
 
 /**
+ * Create Restricted Data Tokens for Amazons Selling Partner API (SPAPI).
+ *
  * Call the Tokens API to get a Restricted Data Token (RDT) for restricted resources.
  *
  * @link https://github.com/zero-to-prod/spapi-rdt
  * @see  https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
- * Create Restricted Data Tokens for Amazons Selling Partner API (SPAPI).
  */
 class SpapiRdt implements SpapiRdtInterface
 {
