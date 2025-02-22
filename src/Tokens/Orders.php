@@ -3,6 +3,7 @@
 namespace Zerotoprod\SpapiRdt\Tokens;
 
 use Zerotoprod\SpapiRdt\Contracts\OrdersInterface;
+use Zerotoprod\SpapiTokens\Contracts\SpapiTokensInterface;
 use Zerotoprod\SpapiTokens\SpapiTokens;
 
 /**
@@ -22,73 +23,30 @@ use Zerotoprod\SpapiTokens\SpapiTokens;
 class Orders implements OrdersInterface
 {
     /**
-     * @var string|null
+     * @var SpapiTokens
      */
-    private $targetApplication;
-
-    /**
-     * @var string
-     */
-    private $base_uri;
-    /**
-     * @var string
-     */
-    private $access_token;
-    /**
-     * @var string|null
-     */
-    private $user_agent;
-    /**
-     * @var array
-     */
-    private $options;
+    private $SpapiTokens;
 
     /**
      * Instantiate this class.
      *
-     * @param  string       $access_token       The access token to create the RDT
-     * @param  string|null  $targetApplication  The application ID for the target application to which access is being
-     * @param  string       $base_uri           The URL for the api
-     * @param  string|null  $user_agent         The user-agent for the request
-     * @param  array        $options            Merge curl options
-     *
      * @link https://github.com/zero-to-prod/spapi-rdt
      * @see  https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
      */
-    public function __construct(
-        string $access_token,
-        ?string $targetApplication = null,
-        string $base_uri = 'https://sellingpartnerapi-na.amazon.com/tokens/2021-03-01/restrictedDataToken',
-        ?string $user_agent = null,
-        array $options = []
-    ) {
-        $this->access_token = $access_token;
-        $this->targetApplication = $targetApplication;
-        $this->user_agent = $user_agent;
-        $this->base_uri = $base_uri;
-        $this->options = $options;
+    private function __construct(SpapiTokensInterface $SpapiTokens)
+    {
+        $this->SpapiTokens = $SpapiTokens;
     }
 
     /**
      * A helper method for instantiation.
      *
-     * @param  string       $access_token       The access token to create the RDT
-     * @param  string|null  $targetApplication  The application ID for the target application to which access is being
-     * @param  string       $base_uri           The URL for the api
-     * @param  string|null  $user_agent         The user-agent for the request
-     * @param  array        $options            Merge curl options
-     *
      * @link https://github.com/zero-to-prod/spapi-rdt
      * @see  https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
      */
-    public static function from(
-        string $access_token,
-        ?string $targetApplication = null,
-        string $base_uri = 'https://sellingpartnerapi-na.amazon.com/tokens/2021-03-01/restrictedDataToken',
-        ?string $user_agent = null,
-        array $options = []
-    ): self {
-        return new self($access_token, $targetApplication, $base_uri, $user_agent, $options);
+    public static function from(SpapiTokensInterface $SpapiTokens): OrdersInterface
+    {
+        return new self($SpapiTokens);
     }
 
     /**
@@ -97,15 +55,12 @@ class Orders implements OrdersInterface
      */
     public function getOrders(array $dataElements = ['buyerInfo', 'shippingAddress'], array $options = []): array
     {
-        return SpapiTokens::createRestrictedDataToken(
-            $this->access_token,
-            '/orders/v0/orders',
-            $dataElements,
-            $this->targetApplication,
-            $this->base_uri,
-            $this->user_agent,
-            array_merge($this->options, $options)
-        );
+        return $this->SpapiTokens
+            ->createRestrictedDataToken(
+                '/orders/v0/orders',
+                $dataElements,
+                $options
+            );
     }
 
     /**
@@ -117,15 +72,12 @@ class Orders implements OrdersInterface
         array $dataElements = ['buyerInfo', 'shippingAddress'],
         array $options = []
     ): array {
-        return SpapiTokens::createRestrictedDataToken(
-            $this->access_token,
-            "/orders/v0/orders/$order_id",
-            $dataElements,
-            $this->targetApplication,
-            $this->base_uri,
-            $this->user_agent,
-            array_merge($this->options, $options)
-        );
+        return $this->SpapiTokens
+            ->createRestrictedDataToken(
+                "/orders/v0/orders/$order_id",
+                $dataElements,
+                $options
+            );
     }
 
     /**
@@ -134,15 +86,12 @@ class Orders implements OrdersInterface
      */
     public function getOrderBuyerInfo(string $order_id, array $options = []): array
     {
-        return SpapiTokens::createRestrictedDataToken(
-            $this->access_token,
-            "/orders/v0/orders/$order_id/buyerInfo",
-            [],
-            $this->targetApplication,
-            $this->base_uri,
-            $this->user_agent,
-            array_merge($this->options, $options)
-        );
+        return $this->SpapiTokens
+            ->createRestrictedDataToken(
+                "/orders/v0/orders/$order_id/buyerInfo",
+                [],
+                $options
+            );
     }
 
     /**
@@ -151,15 +100,12 @@ class Orders implements OrdersInterface
      */
     public function getOrderAddress(string $order_id, array $options = []): array
     {
-        return SpapiTokens::createRestrictedDataToken(
-            $this->access_token,
-            "/orders/v0/orders/$order_id/address",
-            [],
-            $this->targetApplication,
-            $this->base_uri,
-            $this->user_agent,
-            array_merge($this->options, $options)
-        );
+        return $this->SpapiTokens
+            ->createRestrictedDataToken(
+                "/orders/v0/orders/$order_id/address",
+                [],
+                $options
+            );
     }
 
     /**
@@ -168,15 +114,12 @@ class Orders implements OrdersInterface
      */
     public function getOrderItems(string $order_id, array $dataElements = [], array $options = []): array
     {
-        return SpapiTokens::createRestrictedDataToken(
-            $this->access_token,
-            "/orders/v0/orders/$order_id/orderItems",
-            $dataElements,
-            $this->targetApplication,
-            $this->base_uri,
-            $this->user_agent,
-            array_merge($this->options, $options)
-        );
+        return $this->SpapiTokens
+            ->createRestrictedDataToken(
+                "/orders/v0/orders/$order_id/orderItems",
+                $dataElements,
+                $options
+            );
     }
 
     /**
@@ -185,14 +128,11 @@ class Orders implements OrdersInterface
      */
     public function getOrderItemsBuyerInfo(string $order_id, array $dataElements = [], array $options = []): array
     {
-        return SpapiTokens::createRestrictedDataToken(
-            $this->access_token,
-            "/orders/v0/orders/$order_id/orderItems/buyerInfo",
-            $dataElements,
-            $this->targetApplication,
-            $this->base_uri,
-            $this->user_agent,
-            array_merge($this->options, $options)
-        );
+        return $this->SpapiTokens
+            ->createRestrictedDataToken(
+                "/orders/v0/orders/$order_id/orderItems/buyerInfo",
+                $dataElements,
+                $options
+            );
     }
 }
