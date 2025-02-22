@@ -7,86 +7,46 @@ use Zerotoprod\SpapiRdt\Contracts\OrdersInterface;
 use Zerotoprod\SpapiRdt\Contracts\SpapiRdtInterface;
 use Zerotoprod\SpapiRdt\Support\Testing\SpapiRdtFake;
 use Zerotoprod\SpapiRdt\Tokens\Orders;
+use Zerotoprod\SpapiTokens\Contracts\SpapiTokensInterface;
+use Zerotoprod\SpapiTokens\SpapiTokens;
 
 /**
+ * Create Restricted Data Tokens for Amazons Selling Partner API (SPAPI).
+ *
  * Call the Tokens API to get a Restricted Data Token (RDT) for restricted resources.
  *
  * @link https://github.com/zero-to-prod/spapi-rdt
  * @see  https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
- * Create Restricted Data Tokens for Amazons Selling Partner API (SPAPI).
  */
 class SpapiRdt implements SpapiRdtInterface
 {
     /**
-     * @var string|null
+     * @var SpapiTokens
      */
-    private $targetApplication;
-
-    /**
-     * @var string
-     */
-    private $base_uri;
-    /**
-     * @var string
-     */
-    private $access_token;
-    /**
-     * @var string|null
-     */
-    private $user_agent;
-    /**
-     * @var array
-     */
-    private $options;
+    private $SpapiTokens;
 
     /**
      * Instantiate this class.
      *
-     * @param  string       $access_token       The access token to create the RDT
-     * @param  string|null  $targetApplication  The application ID for the target application to which access is being
-     * @param  string       $base_uri           The URL for the api
-     * @param  string|null  $user_agent         The user-agent for the request
-     * @param  array        $options            Merge curl options
-     *
      * @link https://github.com/zero-to-prod/spapi-rdt
      * @see  https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
      */
-    private function __construct(
-        string $access_token,
-        ?string $targetApplication = null,
-        string $base_uri = 'https://sellingpartnerapi-na.amazon.com/tokens/2021-03-01/restrictedDataToken',
-        ?string $user_agent = null,
-        array $options = []
-    ) {
-        $this->access_token = $access_token;
-        $this->targetApplication = $targetApplication;
-        $this->user_agent = $user_agent;
-        $this->base_uri = $base_uri;
-        $this->options = $options;
+    private function __construct(SpapiTokensInterface $SpapiTokens)
+    {
+        $this->SpapiTokens = $SpapiTokens;
     }
 
     /**
      * A helper method for instantiation.
      *
-     * @param  string       $access_token       The access token to create the RDT
-     * @param  string|null  $targetApplication  The application ID for the target application to which access is being
-     * @param  string       $base_uri           The URL for the api
-     * @param  string|null  $user_agent         The user-agent for the request
-     * @param  array        $options            Merge curl options
-     *
      * @link https://github.com/zero-to-prod/spapi-rdt
      * @see  https://developer-docs.amazon.com/sp-api/docs/tokens-api-v2021-03-01-reference
      */
-    public static function from(
-        string $access_token,
-        ?string $targetApplication = null,
-        string $base_uri = 'https://sellingpartnerapi-na.amazon.com/tokens/2021-03-01/restrictedDataToken',
-        ?string $user_agent = null,
-        array $options = []
-    ): SpapiRdtInterface {
+    public static function from(SpapiTokensInterface $SpapiTokens): SpapiRdtInterface
+    {
         return Container::getInstance()->has(SpapiRdtFake::class)
             ? Container::getInstance()->get(SpapiRdtFake::class)
-            : new self($access_token, $targetApplication, $base_uri, $user_agent, $options);
+            : new self($SpapiTokens);
     }
 
     /**
@@ -96,12 +56,6 @@ class SpapiRdt implements SpapiRdtInterface
      */
     public function orders(): OrdersInterface
     {
-        return new Orders(
-            $this->access_token,
-            $this->targetApplication,
-            $this->base_uri,
-            $this->user_agent,
-            $this->options
-        );
+        return Orders::from($this->SpapiTokens);
     }
 }
